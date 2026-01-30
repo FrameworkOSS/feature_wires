@@ -5,9 +5,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/FrameworkOSS/portal/features/commands/handler"
-	"github.com/FrameworkOSS/portal/features/wires/wire"
-	"github.com/FrameworkOSS/portal/portal"
+	"github.com/FrameworkOSS/event"
+	"github.com/FrameworkOSS/feature_commands/handler"
+	"github.com/FrameworkOSS/feature_wires/wire"
+	"github.com/FrameworkOSS/portal"
 )
 
 const (
@@ -81,7 +82,7 @@ var (
 type Wires struct {
 	locks     *portal.PortalMutex
 	processor *handler.EventCommandHandler
-	resps     []*portal.Event
+	resps     []*event.Event
 	wires     map[string]*wire.Wire
 }
 
@@ -89,7 +90,7 @@ func NewWires() (w *Wires) {
 	w = new(Wires)
 	w.locks = portal.NewPortalMutex()
 	w.processor = handler.NewEventCommandHandler()
-	w.resps = make([]*portal.Event, 0)
+	w.resps = make([]*event.Event, 0)
 	w.wires = make(map[string]*wire.Wire)
 
 	w.processor.GetCommandHandler().
@@ -99,12 +100,12 @@ func NewWires() (w *Wires) {
 	return
 }
 
-func (w *Wires) respond(ctx, r *portal.Event) {
+func (w *Wires) respond(ctx, r *event.Event) {
 	portal.EventClaim(ctx, r)
 	w.storeResp(r)
 }
 
-func (w *Wires) cmdWireList(cmd *handler.Command, e *portal.Event) error {
+func (w *Wires) cmdWireList(cmd *handler.Command, e *event.Event) error {
 	output := "pretty"
 	if format := cmd.GetArgument("format"); format != nil {
 		f := format.GetValueStringToLower()
@@ -127,7 +128,7 @@ func (w *Wires) cmdWireList(cmd *handler.Command, e *portal.Event) error {
 	}
 	sort.Strings(keys)
 
-	r := portal.NewEventResponse(w.ID(), nil)
+	r := event.NewEventResponse(w.ID(), nil)
 
 	//Header
 	switch output {
@@ -187,7 +188,7 @@ func (w *Wires) cmdWireList(cmd *handler.Command, e *portal.Event) error {
 	return nil
 }
 
-func (w *Wires) cmdWireCreate(cmd *handler.Command, e *portal.Event) error {
+func (w *Wires) cmdWireCreate(cmd *handler.Command, e *event.Event) error {
 	fmt.Println(1)
 	wires := cmd.GetArgumentsID("wire")
 	fmt.Println(1)
@@ -219,17 +220,17 @@ func (w *Wires) cmdWireCreate(cmd *handler.Command, e *portal.Event) error {
 		w.wires[names[i]] = wire
 	}
 
-	w.respond(e, portal.NewEventSuccess(w.ID()))
+	w.respond(e, event.NewEventSuccess(w.ID()))
 	return nil
 }
 
-func (w *Wires) storeResp(e *portal.Event) {
+func (w *Wires) storeResp(e *event.Event) {
 	w.locks.LockKey(KEY_RESPONSES)
 	w.resps = append(w.resps, e)
 	w.locks.UnlockKey(KEY_RESPONSES)
 }
 
-func (w *Wires) readResp() (e *portal.Event) {
+func (w *Wires) readResp() (e *event.Event) {
 	if len(w.resps) > 0 {
 		w.locks.LockKey(KEY_RESPONSES)
 		e = w.resps[0]
@@ -265,7 +266,7 @@ func (w *Wires) Version() string {
 
 func (w *Wires) Open() error {
 	w.respond(nil, handler.NewEventCommandAdd(w.ID(), cmds...))
-	w.storeResp(portal.NewEventReady(w.ID(), true))
+	w.storeResp(event.NewEventReady(w.ID(), true))
 	return nil
 }
 
@@ -277,10 +278,10 @@ func (w *Wires) Close() (errs []error, retry bool) {
 	return
 }
 
-func (w *Wires) Input(e *portal.Event) error {
+func (w *Wires) Input(e *event.Event) error {
 	return w.processor.Process(e)
 }
 
-func (w *Wires) Output() (*portal.Event, error) {
+func (w *Wires) Output() (*event.Event, error) {
 	return w.readResp(), nil
 }
