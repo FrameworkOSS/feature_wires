@@ -7,8 +7,8 @@ import (
 
 	"github.com/FrameworkOSS/event"
 	"github.com/FrameworkOSS/feature_commands/handler"
-	"github.com/FrameworkOSS/feature_wires/wire"
 	"github.com/FrameworkOSS/portal"
+	"github.com/FrameworkOSS/wire"
 )
 
 const (
