@@ -7,76 +7,9 @@ import (
 
 	"github.com/FrameworkOSS/event"
 	"github.com/FrameworkOSS/feature_commands/handler"
+	"github.com/FrameworkOSS/feature_wires/metadata"
 	"github.com/FrameworkOSS/portal"
 	"github.com/FrameworkOSS/wire"
-)
-
-const (
-	KEY_RESPONSES = "\x01"
-)
-
-var (
-	cmds    = []*handler.Command{cmdWire}
-	cmdWire = handler.NewCommand().
-		SetID("wire").
-		SetName("list wires").
-		SetAbout("Lists all known wires.").
-		SetUsage("Optionally provide a format to use for output. Specifying raw WILL include wire data, be warned!").
-		SetAliases("ls", "show", "display", "map").
-		SetRequiresPreprocessing(true).
-		SetArgument(cmdArgFormat).
-		SetArgument(cmdArgExclude).
-		SetArgument(cmdArgInclude).
-		SetSubcommand(cmdWireCreate)
-	cmdWireCreate = handler.NewCommand().
-			SetID("create").
-			SetName("create wires").
-			SetAbout("Creates one or more wires.").
-			SetUsage("Provide one or more names of wires to be made.").
-			SetAliases("c", "make", "new", "alloc", "allocate").
-			SetRequiresPreprocessing(true).
-			SetRequiresArguments(true).
-			SetArgument(handler.NewCommandArg().
-				SetID("wire").
-				SetName("wire").
-				SetAbout("The name of the wire to be made.").
-				SetUsage("Provide the name of the wire to make.").
-				SetAliases("w", "name", "n").
-				SetType(handler.CommandArgTypeString).
-				SetRepeatable(true).
-				SetRequired(true).
-				SetRequiresValue(true),
-		)
-)
-
-/* --- SHARED COMMAND ARGUMENTS --- */
-var (
-	cmdArgFormat = handler.NewCommandArg().
-			SetID("format").
-			SetName("format").
-			SetAbout("The format to describe the command list using.").
-			SetUsage("Available formats: pretty (default), csv").
-			SetAliases("f", "form", "style", "type").
-			SetType(handler.CommandArgTypeString).
-			SetRequiresValue(true)
-	cmdArgExclude = handler.NewCommandArg().
-			SetID("exclude").
-			SetName("exclude list").
-			SetAbout("The entries to exclude from the listing.").
-			SetUsage("Specify what should be excluded with a delimited list: (raw:0x00) , ; : |").
-			SetAliases("e", "ex", "x", "excluded").
-			SetType(handler.CommandArgTypeString).
-			SetRequiresValue(true).
-			SetRepeatable(true)
-	cmdArgInclude = handler.NewCommandArg().
-			SetID("include").
-			SetName("include list").
-			SetAbout("The entries to include in the listing.").
-			SetUsage("Specify what should be included with a delimited list: (raw:0x00) , ; : |").
-			SetAliases("i", "in", "included").
-			SetType(handler.CommandArgTypeString).
-			SetRequiresValue(true).
-			SetRepeatable(true)
 )
 
 type Wires struct {
@@ -94,8 +27,8 @@ func NewWires() (w *Wires) {
 	w.wires = make(map[string]*wire.Wire)
 
 	w.processor.GetCommandHandler().
-		Handle(w.cmdWireList, cmdWire).
-		Handle(w.cmdWireCreate, cmdWireCreate)
+		Handle(w.cmdWireList, metadata.CmdWire).
+		Handle(w.cmdWireCreate, metadata.CmdWireCreate)
 
 	return
 }
@@ -225,47 +158,47 @@ func (w *Wires) cmdWireCreate(cmd *handler.Command, e *event.Event) error {
 }
 
 func (w *Wires) storeResp(e *event.Event) {
-	w.locks.LockKey(KEY_RESPONSES)
+	w.locks.LockKey(metadata.KEY_RESPONSES)
 	w.resps = append(w.resps, e)
-	w.locks.UnlockKey(KEY_RESPONSES)
+	w.locks.UnlockKey(metadata.KEY_RESPONSES)
 }
 
 func (w *Wires) readResp() (e *event.Event) {
 	if len(w.resps) > 0 {
-		w.locks.LockKey(KEY_RESPONSES)
+		w.locks.LockKey(metadata.KEY_RESPONSES)
 		e = w.resps[0]
 		w.resps = w.resps[1:]
-		w.locks.UnlockKey(KEY_RESPONSES)
+		w.locks.UnlockKey(metadata.KEY_RESPONSES)
 	}
 	return
 }
 
 func (w *Wires) API() int {
-	return 0
+	return metadata.API
 }
 
 func (w *Wires) ID() string {
-	return "wires"
+	return metadata.ID
 }
 
 func (w *Wires) Name() string {
-	return "Wires"
+	return metadata.Name
 }
 
 func (w *Wires) Authors() []string {
-	return []string{"JoshuaDoes"}
+	return strings.Split(metadata.Authors, ",")
 }
 
 func (w *Wires) Description() string {
-	return "Provides a simple interface for creating and utilizing dynamic structures."
+	return metadata.Description
 }
 
 func (w *Wires) Version() string {
-	return "v0.0.1"
+	return metadata.Version
 }
 
 func (w *Wires) Open() error {
-	w.respond(nil, handler.NewEventCommandAdd(w.ID(), cmds...))
+	w.respond(nil, handler.NewEventCommandAdd(w.ID(), metadata.Commands...))
 	w.storeResp(event.NewEventReady(w.ID(), true))
 	return nil
 }
